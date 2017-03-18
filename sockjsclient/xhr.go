@@ -7,17 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/cookiejar"
 	"sync"
 
 	"gopkg.in/igm/sockjs-go.v2/sockjs"
 
 	"github.com/koding/kite/utils"
 )
-
-// the implementation of New() doesn't have any error to be returned yet it
-// returns, so it's totally safe to neglect the error
-var cookieJar, _ = cookiejar.New(nil)
 
 // XHRSession implements sockjs.Session with XHR transport.
 type XHRSession struct {
@@ -43,7 +38,7 @@ func NewXHRSession(opts *DialOptions) (*XHRSession, error) {
 	// following /server_id/session_id should always be the same for every session
 	serverID := threeDigits()
 	sessionID := utils.RandomString(20)
-	sessionURL := opts.BaseURL + "/" + serverID + "/" + sessionID
+	sessionURL := opts.URL + "/" + serverID + "/" + sessionID
 
 	// start the initial session handshake
 	sessionResp, err := client.Post(sessionURL+"/xhr", "text/plain", nil)
@@ -207,10 +202,7 @@ func (x *XHRSession) Send(frame string) error {
 		return ErrSessionClosed
 	}
 
-	// Need's to be JSON encoded array of string messages (SockJS protocol
-	// requirement)
-	message := []string{frame}
-	body, err := json.Marshal(&message)
+	body, err := json.Marshal([]string{frame})
 	if err != nil {
 		return err
 	}

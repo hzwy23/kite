@@ -42,6 +42,18 @@ func init() {
 	}
 }
 
+// DefaultSockJS are sockjs options used to configure sockjs server,
+// which serves kite requests.
+var DefaultSockJS = func() sockjs.Options {
+	opts := sockjs.DefaultOptions
+
+	// We change the heartbeat interval from 25 seconds to 10 seconds. This is
+	// better for environments such as AWS ELB.
+	opts.HeartbeatDelay = 10 * time.Second
+
+	return opts
+}()
+
 // Kite defines a single process that enables distributed service messaging
 // amongst the peers it is connected. A Kite process acts as a Client and as a
 // Server. That means it can receive request, process them, but it also can
@@ -66,7 +78,7 @@ type Kite struct {
 	// ClientFunc is used as the default value for kite.Client.ClientFunc.
 	// If nil, a default ClientFunc will be used.
 	//
-	// See also: kite.Client.ClientFunc docstring.
+	// Deprecated: Set Config.Client field instead.
 	ClientFunc func(*sockjsclient.DialOptions) *http.Client
 
 	// Handlers added with Kite.HandleFunc().
@@ -189,13 +201,8 @@ func New(name, version string) *Kite {
 		muxer:          mux.NewRouter(),
 	}
 
-	// We change the heartbeat interval from 25 seconds to 10 seconds. This is
-	// better for environments such as AWS ELB.
-	sockjsOpts := sockjs.DefaultOptions
-	sockjsOpts.HeartbeatDelay = 10 * time.Second
-
 	// All sockjs communication is done through this endpoint..
-	k.muxer.PathPrefix("/kite").Handler(sockjs.NewHandler("/kite", sockjsOpts, k.sockjsHandler))
+	k.muxer.PathPrefix("/kite").Handler(sockjs.NewHandler("/kite", DefaultSockJS, k.sockjsHandler))
 
 	// Add useful debug logs
 	k.OnConnect(func(c *Client) { k.Log.Debug("New session: %s", c.session.ID()) })
